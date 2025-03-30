@@ -1,23 +1,46 @@
-from pyrogram import Client, filters
-import config
-from Core.logger import logger
-from Modules import member_checker  # Import the member checker module
+#!/usr/bin/env python3
+import asyncio
+import logging
+from pathlib import Path
+from pyrogram import idle
+from Core.bot import TgCheckerBot
+from Database.session import init_db
 
-# Initialize bot
-bot = Client(
-    "MemberCheckerBot",
-    api_id=config.API_ID,
-    api_hash=config.API_HASH,
-    bot_token=config.BOT_TOKEN
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('bot.log'),
+        logging.StreamHandler()
+    ]
 )
+logger = logging.getLogger(__name__)
 
-@bot.on_message(filters.command("start"))
-def start(client, message):
-    message.reply_text("Hello! I am a Member Checker Bot. Use /check to verify your membership.")
+async def main():
+    """Main entry point for the bot"""
+    try:
+        # Initialize database
+        await init_db()
+        
+        # Create bot instance
+        bot = TgCheckerBot()
+        
+        # Start the bot
+        await bot.start()
+        logger.info("✅ Bot started successfully")
+        
+        # Run until stopped
+        await idle()
+        
+    except KeyboardInterrupt:
+        logger.info("🛑 Received stop signal, shutting down...")
+    except Exception as e:
+        logger.error(f"❌ Fatal error: {str(e)}", exc_info=True)
+    finally:
+        if 'bot' in locals():
+            await bot.stop()
+            logger.info("🛑 Bot stopped successfully")
 
 if __name__ == "__main__":
-    logger.info("Bot is starting...")
-    bot.run()
-    logger.info("Bot has started successfully.")
-    logger.info("Bot is running...")
-    logger.info("Bot is ready to accept commands.")
+    asyncio.run(main())
